@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Note de Frais - LFPL</title>
+    <style>
+        :root { 
+            --blue-ligue: #003366; 
+            --light-blue: #e6f0fa;
+        }
+        
+        body { 
+            font-family: 'Segoe UI', Helvetica, Arial, sans-serif; 
+            max-width: 900px; 
+            margin: 20px auto; 
+            padding: 0; 
+            color: #333; 
+            background-color: #f4f7f9;
+        }
+
+        .page-container {
+            background: white;
+            padding: 40px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            border-top: 8px solid var(--blue-ligue);
+            position: relative;
+        }
+
+        .header { 
+            display: flex; 
+            align-items: center; 
+            border-bottom: 2px solid var(--blue-ligue); 
+            margin-bottom: 30px; 
+            padding-bottom: 20px; 
+        }
+        
+        .logo-box { flex: 0 0 100px; }
+        .logo-box img { height: 85px; width: auto; }
+        
+        .header-text { flex: 1; text-align: center; }
+        .header-text h1 { margin: 0; font-size: 2.2em; color: var(--blue-ligue); text-transform: uppercase; }
+        .header-text h2 { margin: 5px 0 0; font-size: 1.1em; color: #555; }
+
+        .info-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+            margin-bottom: 20px;
+            background: var(--light-blue);
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .row { display: flex; flex-direction: column; }
+        .row label { font-weight: bold; font-size: 0.75em; color: var(--blue-ligue); text-transform: uppercase; margin-bottom: 4px; }
+        .row input, .row textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95em; font-family: inherit; }
+
+        .full-row { grid-column: 1 / span 2; }
+        textarea { resize: vertical; min-height: 80px; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th { background-color: var(--blue-ligue); color: white; padding: 12px; font-size: 0.8em; text-transform: uppercase; }
+        td { border-bottom: 1px solid #eee; padding: 12px; }
+
+        .input-table { width: 100px; padding: 8px; border: 1px solid #ddd; text-align: right; border-radius: 4px; }
+        .input-libelle { width: 95%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.85em; }
+
+        .total-box { display: flex; justify-content: flex-end; margin-top: 10px; }
+        .total-label { background: var(--blue-ligue); color: white; padding: 15px 25px; border-radius: 8px 0 0 8px; font-weight: bold; }
+        .total-amount { border: 3px solid var(--blue-ligue); padding: 12px 25px; font-size: 1.8em; font-weight: 900; color: var(--blue-ligue); border-radius: 0 8px 8px 0; min-width: 140px; text-align: center; }
+
+        .signature-section { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 15px; 
+            margin-top: 40px; 
+        }
+        .sig-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; }
+        .sig-title { display: block; border-bottom: 2px solid var(--light-blue); padding-bottom: 5px; margin-bottom: 10px; font-weight: bold; color: var(--blue-ligue); font-size: 0.85em; text-transform: uppercase; }
+        .sig-content { height: 60px; border: 1px dashed #ccc; margin: 10px 0; border-radius: 4px; }
+        .sig-footer label { font-size: 0.7em; font-weight: bold; color: #777; display: block; margin-top: 8px; }
+        .sig-footer input { width: 100%; border: none; border-bottom: 1px solid #eee; font-size: 0.85em; padding: 2px 0; outline: none; background: transparent; }
+
+        .actions { text-align: center; margin-top: 30px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+        .btn { padding: 14px 28px; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+        .btn-print { background: #555; color: white; }
+        .btn-mail { background: var(--blue-ligue); color: white; border: 2px solid var(--blue-ligue); }
+        .btn-reset { background: #e74c3c; color: white; }
+
+        @media print {
+            body { background: white; margin: 0; }
+            .page-container { box-shadow: none; border: none; padding: 0; }
+            .no-print { display: none !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .sig-footer input { border-bottom: 1px solid #000; }
+            .input-libelle, .input-table { border: 1px solid #ccc; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-container">
+    <div class="header">
+        <div class="logo-box">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAMAAAB49D+FAAAAVFBMVEVHcEw0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQ0NEQjKOnFAAAAG3RSTlMAECBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAsun2VAAAALBJREFUeNrt2rEOwjAMRFEb8if8/69tS6skmIidpS73SBy8pS9OnDgpKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq/itDA8XUAF9Y0m7aAAAAAElFTkSuQmCC" alt="LFPL">
+        </div>
+        <div class="header-text">
+            <h1>Note de Frais</h1>
+            <h2>Ligue de Football des Pays de la Loire</h2>
+        </div>
+    </div>
+
+    <form id="expenseForm">
+        <div class="info-grid">
+            <div class="row"><label>Collaborateur</label><input type="text" id="nom_complet" placeholder="Prénom NOM" onchange="saveInfo()"></div>
+            <div class="row"><label>Pôle / Service</label><input type="text" id="service" onchange="saveInfo()"></div>
+            <div class="row full-row">
+                <label>Détails du déplacement (Lieu, Date exacte, Objet précis)</label>
+                <textarea id="details_deplacement" placeholder="Ex: Nantes - 25/03/2026 - Réunion Commission Régionale"></textarea>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Désignation des frais</th>
+                    <th style="text-align: center;">Détails / Précisions</th>
+                    <th style="text-align: right;">Montant (€)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Indemnités Kilométriques (0,892 €/km)</td>
+                    <td style="text-align: center;"><input type="number" id="kms" oninput="calculer()" placeholder="kms" class="input-table" step="1"></td>
+                    <td id="resKms" style="text-align: right; font-weight: bold;">0,00 €</td>
+                </tr>
+                <tr>
+                    <td>Restauration</td>
+                    <td style="text-align: center; color: #777; font-size: 0.8em;">(Justificatifs joints)</td>
+                    <td style="text-align: right;"><input type="number" id="resto" oninput="calculer()" step="0.01" class="input-table"> €</td>
+                </tr>
+                <tr>
+                    <td>Péages & Transports</td>
+                    <td style="text-align: center;">
+                        <input type="text" id="libelle_transp" class="input-libelle" placeholder="Ex: Péage A11, Parking, Train...">
+                    </td>
+                    <td style="text-align: right;"><input type="number" id="transp" oninput="calculer()" step="0.01" class="input-table"> €</td>
+                </tr>
+                <tr>
+                    <td>Divers / Hébergement</td>
+                    <td style="text-align: center;">
+                        <input type="text" id="libelle_divers" class="input-libelle" placeholder="Ex: Hôtel, Fournitures...">
+                    </td>
+                    <td style="text-align: right;"><input type="number" id="divers" oninput="calculer()" step="0.01" class="input-table"> €</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="total-box">
+            <div class="total-label">TOTAL DÉCLARÉ</div>
+            <div class="total-amount"><span id="totalFinal">0,00</span> €</div>
+        </div>
+    </form>
+
+    <div class="signature-section">
+        <div class="sig-card">
+            <span class="sig-title">Salarié</span>
+            <div class="sig-content"></div>
+            <div class="sig-footer">
+                <label>Fait le :</label>
+                <input type="date" class="date-auto">
+            </div>
+        </div>
+        <div class="sig-card">
+            <span class="sig-title">Validation Manager</span>
+            <div class="sig-content"></div>
+            <div class="sig-footer">
+                <label>Nom du responsable :</label>
+                <input type="text" placeholder="...">
+                <label>Date du visa :</label>
+                <input type="text" placeholder="Le ... / ... / 2026">
+            </div>
+        </div>
+        <div class="sig-card">
+            <span class="sig-title">Comptabilité</span>
+            <div class="sig-content"></div>
+            <div class="sig-footer">
+                <label>Traitement le :</label>
+                <input type="date">
+            </div>
+        </div>
+    </div>
+
+    <div class="actions no-print">
+        <button class="btn btn-print" onclick="imprimerEtValider()">1. Imprimer / Sauvegarder PDF</button>
+        <button class="btn btn-mail" onclick="envoyerEmail()">2. Envoyer le PDF imprimé à la Compta</button>
+        <button class="btn btn-reset" onclick="reinitialiserFormulaire()">Réinitialiser</button>
+    </div>
+</div>
+
+<script>
+    const TARIF_KM = 0.892;
+    let pdfGenere = false;
+
+    function calculer() {
+        const getVal = id => parseFloat(document.getElementById(id).value) || 0;
+        const totalKms = getVal('kms') * TARIF_KM;
+        document.getElementById('resKms').innerText = totalKms.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " €";
+        const totalFinal = totalKms + getVal('resto') + getVal('transp') + getVal('divers');
+        document.getElementById('totalFinal').innerText = totalFinal.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        return totalFinal;
+    }
+
+    function imprimerEtValider() {
+        pdfGenere = true;
+        window.print();
+    }
+
+    function saveInfo() {
+        localStorage.setItem('lfpl_nom', document.getElementById('nom_complet').value);
+        localStorage.setItem('lfpl_service', document.getElementById('service').value);
+    }
+
+    function reinitialiserFormulaire() {
+        if(confirm("Voulez-vous vraiment tout vider ?")) {
+            document.getElementById('expenseForm').reset();
+            document.getElementById('details_deplacement').value = "";
+            document.getElementById('libelle_divers').value = "";
+            document.getElementById('libelle_transp').value = "";
+            pdfGenere = false;
+            calculer();
+        }
+    }
+
+    function envoyerEmail() {
+        const col = document.getElementById('nom_complet').value.trim();
+        const det = document.getElementById('details_deplacement').value.trim();
+        const tot = calculer();
+        
+        if (!col || !det || tot <= 0) {
+            alert("❌ Erreur : Veuillez remplir votre nom, les détails du déplacement et au moins un montant.");
+            return;
+        }
+
+        if (!pdfGenere) {
+            alert("⚠️ Attention : Vous devez d'abord cliquer sur le bouton '1. Imprimer / Sauvegarder PDF' pour créer le document avant de l'envoyer.");
+            return;
+        }
+
+        const destinataire = "comptabilite@lfpl.fff.fr";
+        const sujet = encodeURIComponent(`Note de frais - ${col} - ${det.substring(0, 40)}`);
+        
+        let corps = `Bonjour,\n\nVEUILLEZ TROUVER CI-JOINT MA NOTE DE FRAIS AU FORMAT PDF (générée via l'outil).\n\n`;
+        corps += `RÉSUMÉ :\n`;
+        corps += `- Collaborateur : ${col}\n`;
+        corps += `- Déplacement : ${det}\n`;
+        corps += `- Montant total : ${document.getElementById('totalFinal').innerText} €\n\n`;
+        corps += `⚠️ PENSEZ À GLISSER LE PDF ET VOS JUSTIFICATIFS DANS CE MAIL ⚠️\n\nCordialement.`;
+        
+        window.location.href = `mailto:${destinataire}?subject=${sujet}&body=${encodeURIComponent(corps)}`;
+    }
+
+    window.onload = () => {
+        const today = new Date().toISOString().split('T')[0];
+        document.querySelectorAll('.date-auto').forEach(i => i.value = today);
+        if(localStorage.getItem('lfpl_nom')) document.getElementById('nom_complet').value = localStorage.getItem('lfpl_nom');
+        if(localStorage.getItem('lfpl_service')) document.getElementById('service').value = localStorage.getItem('lfpl_service');
+    };
+</script>
+
+</body>
+</html>
