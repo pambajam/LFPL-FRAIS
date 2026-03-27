@@ -45,7 +45,7 @@
         .info-grid { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
-            gap: 20px; 
+            gap: 15px; 
             margin-bottom: 20px;
             background: var(--light-blue);
             padding: 20px;
@@ -57,7 +57,7 @@
         .row input, .row textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95em; font-family: inherit; }
 
         .full-row { grid-column: 1 / span 2; }
-        textarea { resize: vertical; min-height: 80px; }
+        textarea { resize: vertical; min-height: 60px; }
 
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         th { background-color: var(--blue-ligue); color: white; padding: 12px; font-size: 0.8em; text-transform: uppercase; }
@@ -70,11 +70,23 @@
         .total-label { background: var(--blue-ligue); color: white; padding: 15px 25px; border-radius: 8px 0 0 8px; font-weight: bold; }
         .total-amount { border: 3px solid var(--blue-ligue); padding: 12px 25px; font-size: 1.8em; font-weight: 900; color: var(--blue-ligue); border-radius: 0 8px 8px 0; min-width: 140px; text-align: center; }
 
+        .mention-tickets {
+            margin-top: 25px;
+            text-align: center;
+            color: #444;
+            font-style: italic;
+            font-size: 0.95em;
+            border: 2px dashed #00336644;
+            padding: 15px;
+            border-radius: 8px;
+            background: #fff;
+        }
+
         .signature-section { 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
             gap: 15px; 
-            margin-top: 40px; 
+            margin-top: 30px; 
         }
         .sig-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; }
         .sig-title { display: block; border-bottom: 2px solid var(--light-blue); padding-bottom: 5px; margin-bottom: 10px; font-weight: bold; color: var(--blue-ligue); font-size: 0.85em; text-transform: uppercase; }
@@ -115,6 +127,7 @@
         <div class="info-grid">
             <div class="row"><label>Collaborateur</label><input type="text" id="nom_complet" placeholder="Prénom NOM" onchange="saveInfo()"></div>
             <div class="row"><label>Pôle / Service</label><input type="text" id="service" onchange="saveInfo()"></div>
+            <div class="row full-row"><label>Nom du Manager / Valideur</label><input type="text" id="nom_manager" placeholder="Nom de votre responsable" onchange="saveInfo()"></div>
             <div class="row full-row">
                 <label>Détails du déplacement (Lieu, Date exacte, Objet précis)</label>
                 <textarea id="details_deplacement" placeholder="Ex: Nantes - 25/03/2026 - Réunion Commission Régionale"></textarea>
@@ -163,6 +176,10 @@
         </div>
     </form>
 
+    <div class="mention-tickets">
+        ⚠️ <strong>Rappel important :</strong> Merci de transmettre les originaux de vos tickets et justificatifs au service comptabilité après l'envoi de ce formulaire.
+    </div>
+
     <div class="signature-section">
         <div class="sig-card">
             <span class="sig-title">Salarié</span>
@@ -177,7 +194,7 @@
             <div class="sig-content"></div>
             <div class="sig-footer">
                 <label>Nom du responsable :</label>
-                <input type="text" placeholder="...">
+                <input type="text" id="sig_manager_name" placeholder="...">
                 <label>Date du visa :</label>
                 <input type="text" placeholder="Le ... / ... / 2026">
             </div>
@@ -194,7 +211,7 @@
 
     <div class="actions no-print">
         <button class="btn btn-print" onclick="imprimerEtValider()">1. Imprimer / Sauvegarder PDF</button>
-        <button class="btn btn-mail" onclick="envoyerEmail()">2. Envoyer le PDF imprimé à la Compta</button>
+        <button class="btn btn-mail" onclick="envoyerEmail()">2. Envoyer par Email</button>
         <button class="btn btn-reset" onclick="reinitialiserFormulaire()">Réinitialiser</button>
     </div>
 </div>
@@ -218,12 +235,20 @@
     }
 
     function saveInfo() {
-        localStorage.setItem('lfpl_nom', document.getElementById('nom_complet').value);
-        localStorage.setItem('lfpl_service', document.getElementById('service').value);
+        const nom = document.getElementById('nom_complet').value;
+        const service = document.getElementById('service').value;
+        const manager = document.getElementById('nom_manager').value;
+        
+        localStorage.setItem('lfpl_nom', nom);
+        localStorage.setItem('lfpl_service', service);
+        localStorage.setItem('lfpl_manager', manager);
+        
+        // On reporte aussi le nom du manager dans la zone de signature
+        document.getElementById('sig_manager_name').value = manager;
     }
 
     function reinitialiserFormulaire() {
-        if(confirm("Voulez-vous vraiment tout vider ?")) {
+        if(confirm("Voulez-vous vraiment tout vider (sauf vos infos de profil) ?")) {
             document.getElementById('expenseForm').reset();
             document.getElementById('details_deplacement').value = "";
             document.getElementById('libelle_divers').value = "";
@@ -235,6 +260,7 @@
 
     function envoyerEmail() {
         const col = document.getElementById('nom_complet').value.trim();
+        const manager = document.getElementById('nom_manager').value.trim();
         const det = document.getElementById('details_deplacement').value.trim();
         const tot = calculer();
         
@@ -244,19 +270,20 @@
         }
 
         if (!pdfGenere) {
-            alert("⚠️ Attention : Vous devez d'abord cliquer sur le bouton '1. Imprimer / Sauvegarder PDF' pour créer le document avant de l'envoyer.");
+            alert("⚠️ Attention : Vous devez d'abord cliquer sur le bouton '1. Imprimer / Sauvegarder PDF' pour créer le document.");
             return;
         }
 
         const destinataire = "comptabilite@lfpl.fff.fr";
-        const sujet = encodeURIComponent(`Note de frais - ${col} - ${det.substring(0, 40)}`);
+        const sujet = encodeURIComponent(`Note de frais - ${col} (Manager: ${manager}) - ${det.substring(0, 30)}`);
         
-        let corps = `Bonjour,\n\nVEUILLEZ TROUVER CI-JOINT MA NOTE DE FRAIS AU FORMAT PDF (générée via l'outil).\n\n`;
+        let corps = `Bonjour,\n\nVeuillez trouver ci-joint ma note de frais au format PDF.\n\n`;
         corps += `RÉSUMÉ :\n`;
         corps += `- Collaborateur : ${col}\n`;
-        corps += `- Déplacement : ${det}\n`;
+        corps += `- Manager : ${manager}\n`;
         corps += `- Montant total : ${document.getElementById('totalFinal').innerText} €\n\n`;
-        corps += `⚠️ PENSEZ À GLISSER LE PDF ET VOS JUSTIFICATIFS DANS CE MAIL ⚠️\n\nCordialement.`;
+        corps += `⚠️ N'OUBLIEZ PAS DE JOINDRE LE PDF ET LES SCANS DES JUSTIFICATIFS ⚠️\n`;
+        corps += `(Les originaux seront transmis physiquement au service comptabilité).\n\nCordialement.`;
         
         window.location.href = `mailto:${destinataire}?subject=${sujet}&body=${encodeURIComponent(corps)}`;
     }
@@ -264,8 +291,14 @@
     window.onload = () => {
         const today = new Date().toISOString().split('T')[0];
         document.querySelectorAll('.date-auto').forEach(i => i.value = today);
+        
         if(localStorage.getItem('lfpl_nom')) document.getElementById('nom_complet').value = localStorage.getItem('lfpl_nom');
         if(localStorage.getItem('lfpl_service')) document.getElementById('service').value = localStorage.getItem('lfpl_service');
+        if(localStorage.getItem('lfpl_manager')) {
+            const m = localStorage.getItem('lfpl_manager');
+            document.getElementById('nom_manager').value = m;
+            document.getElementById('sig_manager_name').value = m;
+        }
     };
 </script>
 
