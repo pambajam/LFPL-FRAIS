@@ -107,7 +107,6 @@
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .sig-footer input { border-bottom: 1px solid #000; }
             .input-libelle, .input-table { border: 1px solid #ccc; }
-            select { border: none; appearance: none; -webkit-appearance: none; font-weight: bold; }
         }
     </style>
 </head>
@@ -133,7 +132,7 @@
                 <label>Sélectionner votre Manager / Valideur</label>
                 <select id="select_manager" onchange="saveInfo()">
                     <option value="">-- Choisir dans la liste --</option>
-                    </select>
+                </select>
             </div>
             
             <div class="row full-row">
@@ -202,7 +201,7 @@
             <div class="sig-content"></div>
             <div class="sig-footer">
                 <label>Nom du responsable :</label>
-                <input type="text" id="sig_manager_display" readonly style="border:none; font-weight:bold; color:var(--blue-ligue);">
+                <input type="text" id="sig_manager_display" readonly style="border:none; font-weight:bold; color:var(--blue-ligue); outline:none; background:transparent;">
                 <label>Date du visa :</label>
                 <input type="text" placeholder="Le ... / ... / 2026">
             </div>
@@ -225,15 +224,15 @@
 </div>
 
 <script>
-    // --- CONFIGURATION : LISTE DES MANAGERS ---
-    const LISTE_MANAGERS = [
-        "Jean DUPONT",
-        "Marie MARTIN",
-        "Directeur Technique",
-        "Responsable Administratif",
-        "Président de Commission"
+    // --- CONFIGURATION DES MANAGERS ET LEURS EMAILS ---
+    const MANAGERS = [
+        { nom: "Marie MARTIN", email: "marie.martin@lfpl.fff.fr" },
+        { nom: "Jean DUPONT", email: "jean.dupont@lfpl.fff.fr" },
+        { nom: "Direction Générale", email: "direction@lfpl.fff.fr" },
+        { nom: "Responsable Pôle", email: "pole.sport@lfpl.fff.fr" }
     ];
 
+    const EMAIL_COMPTA_CC = "comptabilite@lfpl.fff.fr";
     const TARIF_KM = 0.892;
     let pdfGenere = false;
 
@@ -258,25 +257,23 @@
     function saveInfo() {
         const nom = document.getElementById('nom_complet').value;
         const service = document.getElementById('service').value;
-        const manager = document.getElementById('select_manager').value;
+        const managerNom = document.getElementById('select_manager').value;
         
         localStorage.setItem('lfpl_nom', nom);
         localStorage.setItem('lfpl_service', service);
-        localStorage.setItem('lfpl_manager', manager);
+        localStorage.setItem('lfpl_manager', managerNom);
         
-        // Report dans la zone de signature
-        document.getElementById('sig_manager_display').value = manager;
+        document.getElementById('sig_manager_display').value = managerNom;
     }
 
     function reinitialiserFormulaire() {
-        if(confirm("Voulez-vous vraiment tout vider (sauf vos infos de profil) ?")) {
+        if(confirm("Voulez-vous vraiment tout vider ?")) {
             document.getElementById('expenseForm').reset();
             document.getElementById('details_deplacement').value = "";
             document.getElementById('libelle_divers').value = "";
             document.getElementById('libelle_transp').value = "";
             pdfGenere = false;
             calculer();
-            // On remet le manager stocké
             document.getElementById('select_manager').value = localStorage.getItem('lfpl_manager') || "";
             document.getElementById('sig_manager_display').value = document.getElementById('select_manager').value;
         }
@@ -284,12 +281,16 @@
 
     function envoyerEmail() {
         const col = document.getElementById('nom_complet').value.trim();
-        const manager = document.getElementById('select_manager').value;
+        const managerNom = document.getElementById('select_manager').value;
         const det = document.getElementById('details_deplacement').value.trim();
         const tot = calculer();
         
-        if (!col || !manager || !det || tot <= 0) {
-            alert("❌ Erreur : Formulaire incomplet (Nom, Manager, Détails et Montants requis).");
+        // Trouver l'email correspondant au manager choisi
+        const managerObj = MANAGERS.find(m => m.nom === managerNom);
+        const emailDestinataire = managerObj ? managerObj.email : EMAIL_COMPTA_CC;
+
+        if (!col || !managerNom || !det || tot <= 0) {
+            alert("❌ Erreur : Formulaire incomplet.");
             return;
         }
 
@@ -298,34 +299,31 @@
             return;
         }
 
-        const destinataire = "comptabilite@lfpl.fff.fr";
-        const sujet = encodeURIComponent(`Note de frais - ${col} (Valideur: ${manager})`);
+        const sujet = encodeURIComponent(`Note de frais - ${col} (Validation attendue)`);
         
-        let corps = `Bonjour,\n\nVeuillez trouver ci-joint ma note de frais au format PDF.\n\n`;
+        let corps = `Bonjour ${managerNom},\n\nJe te prie de trouver ci-joint ma note de frais pour validation avant transmission à la comptabilité.\n\n`;
         corps += `RÉSUMÉ :\n`;
         corps += `- Collaborateur : ${col}\n`;
-        corps += `- Manager Valideur : ${manager}\n`;
+        corps += `- Déplacement : ${det}\n`;
         corps += `- Montant total : ${document.getElementById('totalFinal').innerText} €\n\n`;
-        corps += `⚠️ N'OUBLIEZ PAS DE JOINDRE LE PDF ET LES SCANS DES JUSTIFICATIFS ⚠️\n`;
-        corps += `(Les originaux seront transmis physiquement au service comptabilité).\n\nCordialement.`;
+        corps += `⚠️ N'OUBLIEZ PAS DE JOINDRE LE PDF GÉNÉRÉ ET VOS JUSTIFICATIFS ⚠️\n\nCordialement.`;
         
-        window.location.href = `mailto:${destinataire}?subject=${sujet}&body=${encodeURIComponent(corps)}`;
+        // On envoie au manager, et on peut ajouter la compta en copie (cc)
+        window.location.href = `mailto:${emailDestinataire}?cc=${EMAIL_COMPTA_CC}&subject=${sujet}&body=${encodeURIComponent(corps)}`;
     }
 
     window.onload = () => {
-        // Remplissage de la liste déroulante des managers
         const select = document.getElementById('select_manager');
-        LISTE_MANAGERS.sort().forEach(m => {
+        MANAGERS.sort((a, b) => a.nom.localeCompare(b.nom)).forEach(m => {
             let opt = document.createElement('option');
-            opt.value = m;
-            opt.innerHTML = m;
+            opt.value = m.nom;
+            opt.innerHTML = m.nom;
             select.appendChild(opt);
         });
 
         const today = new Date().toISOString().split('T')[0];
         document.querySelectorAll('.date-auto').forEach(i => i.value = today);
         
-        // Chargement des données sauvegardées
         if(localStorage.getItem('lfpl_nom')) document.getElementById('nom_complet').value = localStorage.getItem('lfpl_nom');
         if(localStorage.getItem('lfpl_service')) document.getElementById('service').value = localStorage.getItem('lfpl_service');
         if(localStorage.getItem('lfpl_manager')) {
