@@ -54,7 +54,7 @@
 
         .row { display: flex; flex-direction: column; }
         .row label { font-weight: bold; font-size: 0.75em; color: var(--blue-ligue); text-transform: uppercase; margin-bottom: 4px; }
-        .row input, .row textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95em; font-family: inherit; }
+        .row input, .row textarea, .row select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95em; font-family: inherit; background: white; }
 
         .full-row { grid-column: 1 / span 2; }
         textarea { resize: vertical; min-height: 60px; }
@@ -107,6 +107,7 @@
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .sig-footer input { border-bottom: 1px solid #000; }
             .input-libelle, .input-table { border: 1px solid #ccc; }
+            select { border: none; appearance: none; -webkit-appearance: none; font-weight: bold; }
         }
     </style>
 </head>
@@ -127,7 +128,14 @@
         <div class="info-grid">
             <div class="row"><label>Collaborateur</label><input type="text" id="nom_complet" placeholder="Prénom NOM" onchange="saveInfo()"></div>
             <div class="row"><label>Pôle / Service</label><input type="text" id="service" onchange="saveInfo()"></div>
-            <div class="row full-row"><label>Nom du Manager / Valideur</label><input type="text" id="nom_manager" placeholder="Nom de votre responsable" onchange="saveInfo()"></div>
+            
+            <div class="row full-row">
+                <label>Sélectionner votre Manager / Valideur</label>
+                <select id="select_manager" onchange="saveInfo()">
+                    <option value="">-- Choisir dans la liste --</option>
+                    </select>
+            </div>
+            
             <div class="row full-row">
                 <label>Détails du déplacement (Lieu, Date exacte, Objet précis)</label>
                 <textarea id="details_deplacement" placeholder="Ex: Nantes - 25/03/2026 - Réunion Commission Régionale"></textarea>
@@ -194,7 +202,7 @@
             <div class="sig-content"></div>
             <div class="sig-footer">
                 <label>Nom du responsable :</label>
-                <input type="text" id="sig_manager_name" placeholder="...">
+                <input type="text" id="sig_manager_display" readonly style="border:none; font-weight:bold; color:var(--blue-ligue);">
                 <label>Date du visa :</label>
                 <input type="text" placeholder="Le ... / ... / 2026">
             </div>
@@ -217,6 +225,15 @@
 </div>
 
 <script>
+    // --- CONFIGURATION : LISTE DES MANAGERS ---
+    const LISTE_MANAGERS = [
+        "Jean DUPONT",
+        "Marie MARTIN",
+        "Directeur Technique",
+        "Responsable Administratif",
+        "Président de Commission"
+    ];
+
     const TARIF_KM = 0.892;
     let pdfGenere = false;
 
@@ -230,6 +247,10 @@
     }
 
     function imprimerEtValider() {
+        if (!document.getElementById('select_manager').value) {
+            alert("Veuillez choisir un manager avant d'imprimer.");
+            return;
+        }
         pdfGenere = true;
         window.print();
     }
@@ -237,14 +258,14 @@
     function saveInfo() {
         const nom = document.getElementById('nom_complet').value;
         const service = document.getElementById('service').value;
-        const manager = document.getElementById('nom_manager').value;
+        const manager = document.getElementById('select_manager').value;
         
         localStorage.setItem('lfpl_nom', nom);
         localStorage.setItem('lfpl_service', service);
         localStorage.setItem('lfpl_manager', manager);
         
-        // On reporte aussi le nom du manager dans la zone de signature
-        document.getElementById('sig_manager_name').value = manager;
+        // Report dans la zone de signature
+        document.getElementById('sig_manager_display').value = manager;
     }
 
     function reinitialiserFormulaire() {
@@ -255,32 +276,35 @@
             document.getElementById('libelle_transp').value = "";
             pdfGenere = false;
             calculer();
+            // On remet le manager stocké
+            document.getElementById('select_manager').value = localStorage.getItem('lfpl_manager') || "";
+            document.getElementById('sig_manager_display').value = document.getElementById('select_manager').value;
         }
     }
 
     function envoyerEmail() {
         const col = document.getElementById('nom_complet').value.trim();
-        const manager = document.getElementById('nom_manager').value.trim();
+        const manager = document.getElementById('select_manager').value;
         const det = document.getElementById('details_deplacement').value.trim();
         const tot = calculer();
         
-        if (!col || !det || tot <= 0) {
-            alert("❌ Erreur : Veuillez remplir votre nom, les détails du déplacement et au moins un montant.");
+        if (!col || !manager || !det || tot <= 0) {
+            alert("❌ Erreur : Formulaire incomplet (Nom, Manager, Détails et Montants requis).");
             return;
         }
 
         if (!pdfGenere) {
-            alert("⚠️ Attention : Vous devez d'abord cliquer sur le bouton '1. Imprimer / Sauvegarder PDF' pour créer le document.");
+            alert("⚠️ Attention : Vous devez d'abord cliquer sur le bouton '1. Imprimer / Sauvegarder PDF'.");
             return;
         }
 
         const destinataire = "comptabilite@lfpl.fff.fr";
-        const sujet = encodeURIComponent(`Note de frais - ${col} (Manager: ${manager}) - ${det.substring(0, 30)}`);
+        const sujet = encodeURIComponent(`Note de frais - ${col} (Valideur: ${manager})`);
         
         let corps = `Bonjour,\n\nVeuillez trouver ci-joint ma note de frais au format PDF.\n\n`;
         corps += `RÉSUMÉ :\n`;
         corps += `- Collaborateur : ${col}\n`;
-        corps += `- Manager : ${manager}\n`;
+        corps += `- Manager Valideur : ${manager}\n`;
         corps += `- Montant total : ${document.getElementById('totalFinal').innerText} €\n\n`;
         corps += `⚠️ N'OUBLIEZ PAS DE JOINDRE LE PDF ET LES SCANS DES JUSTIFICATIFS ⚠️\n`;
         corps += `(Les originaux seront transmis physiquement au service comptabilité).\n\nCordialement.`;
@@ -289,15 +313,25 @@
     }
 
     window.onload = () => {
+        // Remplissage de la liste déroulante des managers
+        const select = document.getElementById('select_manager');
+        LISTE_MANAGERS.sort().forEach(m => {
+            let opt = document.createElement('option');
+            opt.value = m;
+            opt.innerHTML = m;
+            select.appendChild(opt);
+        });
+
         const today = new Date().toISOString().split('T')[0];
         document.querySelectorAll('.date-auto').forEach(i => i.value = today);
         
+        // Chargement des données sauvegardées
         if(localStorage.getItem('lfpl_nom')) document.getElementById('nom_complet').value = localStorage.getItem('lfpl_nom');
         if(localStorage.getItem('lfpl_service')) document.getElementById('service').value = localStorage.getItem('lfpl_service');
         if(localStorage.getItem('lfpl_manager')) {
             const m = localStorage.getItem('lfpl_manager');
-            document.getElementById('nom_manager').value = m;
-            document.getElementById('sig_manager_name').value = m;
+            select.value = m;
+            document.getElementById('sig_manager_display').value = m;
         }
     };
 </script>
